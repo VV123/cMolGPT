@@ -36,15 +36,24 @@ torch.manual_seed(0)
 def evaluate(model, val_iter):
     model.eval()
     losses = 0
-    for idx, tgt in (enumerate(valid_iter)):
-        tgt = tgt.transpose(0, 1).to(device)
+    for idx, _tgt in (enumerate(valid_iter)):
+        _target = None
+        if type(_tgt) is tuple:
+            _tgt, _target = _tgt
+            _target = torch.LongTensor(_target).to(device)
+        tgt = _tgt.transpose(0, 1).to(device)
         if tgt.size()[0] == 4098:
             continue
         tgt_input = tgt[:-1, :]
 
         tgt_mask, tgt_padding_mask = create_mask(tgt_input)
 
-        logits = model(tgt_input, tgt_mask, tgt_padding_mask)
+        if _target is None:
+            target = torch.zeros((tgt_input.size()[-1]), dtype=torch.int32).to(device)
+        else:
+            target = _target
+        #target = torch.zeros((tgt_input.size()[-1]), dtype=torch.int32).to(device)
+        logits = model(tgt_input, tgt_mask, tgt_padding_mask, target)
         tgt_out = tgt[1:, :]
         loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
         losses += loss.item()
@@ -55,6 +64,11 @@ def train_epoch(model, train_iter, optimizer):
     model.train()
     losses = 0
     for idx, _tgt in enumerate(train_iter):
+        _target = None
+        if type(_tgt) is tuple:
+            _tgt, _target = _tgt
+            _target = torch.LongTensor(_target).to(device)
+        #print(type(_tgt) is tuple)
         tgt = _tgt.transpose(0, 1).to(device)
         if tgt.size()[0] == 4098:
             continue 
@@ -62,8 +76,12 @@ def train_epoch(model, train_iter, optimizer):
         tgt_input = tgt[:-1, :]
 
         tgt_mask, tgt_padding_mask = create_mask(tgt_input)
-
-        logits = model(tgt_input, tgt_mask, tgt_padding_mask)
+        if _target is None:
+            target = torch.zeros((tgt_input.size()[-1]), dtype=torch.int32).to(device)
+        else:
+            target = _target
+        
+        logits = model(tgt_input, tgt_mask, tgt_padding_mask, target)
       
         optimizer.zero_grad()
       
@@ -73,7 +91,7 @@ def train_epoch(model, train_iter, optimizer):
         loss.backward()
 
         optimizer.step()
-        if idx % 10 == 0:
+        if idx % 50 == 0:
             print('Train Epoch: {}\t Loss: {:.6f}'.format(epoch, loss.item()))     
         losses += loss.item()
 
@@ -110,7 +128,7 @@ def greedy_decode(model, max_len, start_symbol):
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('--mode', choices=['train', 'infer', 'baseline'],\
+    arg_parser.add_argument('--mode', choices=['train', 'infer', 'baseline', 'finetune'],\
         default='train',help='Run mode')
     arg_parser.add_argument('--device', choices=['cuda', 'cpu'],\
         default='cuda',help='Device')
@@ -133,9 +151,14 @@ if __name__ == '__main__':
     #training_sets = load_sets('zinc/zinc.smi')
     #dataset = md.DecoratorDataset(training_sets, vocabulary=vocabulary)
 
-    mol_list = list(read_delimited_file('./chembl.filtered.smi'))
+    mol_list0 = list(read_delimited_file('./chembl.filtered.smi'))
+    mol_list1, target_list = zip(*read_csv_file('Mol_target_dataloader/target.smi', num_fields=2))
+    mol_list = mol_list0 
+    mol_list.extend(mol_list1)
     vocabulary = mv.create_vocabulary(smiles_list=mol_list, tokenizer=mv.SMILESTokenizer())
-    dataset = md.Dataset(mol_list, vocabulary, mv.SMILESTokenizer())
+    
+    
+    dataset = md.Dataset(mol_list0, vocabulary, mv.SMILESTokenizer())
     #coldata = tud.DataLoader(dataset, 2, collate_fn=Dataset.collate_fn)
 
     BATCH_SIZE = args.batch_size
@@ -185,7 +208,7 @@ if __name__ == '__main__':
             transformer.load_state_dict(torch.load(args.path))
 
 
-        min_loss, val_loss = 100000000, 100000000
+        min_loss, val_loss = float('inf'), float('inf')
         for epoch in range(1, NUM_EPOCHS+1):
             start_time = time.time()
             train_loss = train_epoch(transformer, train_iter, optimizer)
@@ -201,7 +224,42 @@ if __name__ == '__main__':
             print((f"Epoch: {epoch}, Train loss: {train_loss:.3f}, Val loss: {val_loss:.3f}, "
                 f"Epoch time = {(end_time - start_time):.3f}s"))
     
- 
+    elif args.mode == 'finetune':
+        from Mol_target_dataloader.utils import read_csv_file
+        import Mol_target_dataloader.dataset as md
+
+        mol_list1, target_list = zip(*read_csv_file('Mol_target_dataloader/target.smi', num_fields=2))
+        #vocabulary = mv.create_vocabulary(smiles_list=mol_list, tokenizer=mv.SMILESTokenizer())
+        finetune_dataset = md.Dataset(mol_list1, target_list, vocabulary, mv.SMILESTokenizer())
+        num_train= int(len(finetune_dataset)*0.8)
+        num_test= len(finetune_dataset) -num_train
+        train_data, val_data = torch.utils.data.random_split(finetune_dataset, [num_train, num_test])
+
+        train_iter = tud.DataLoader(train_data, args.batch_size, collate_fn=finetune_dataset.collate_fn,shuffle=True)
+        val_iter = tud.DataLoader(val_data, args.batch_size, collate_fn=finetune_dataset.collate_fn,shuffle=True)
+        transformer = transformer.to(DEVICE)
+        transformer.load_state_dict(torch.load(args.path))
+
+        min_loss, val_loss = float('inf'), float('inf')
+        for epoch in range(1, NUM_EPOCHS+1):
+            start_time = time.time()
+            train_loss = train_epoch(transformer, train_iter, optimizer)
+            scheduler.step()
+            end_time = time.time()
+            if (epoch+1)%1==0:
+                val_loss = evaluate(transformer, valid_iter)
+                if val_loss < min_loss:
+                    min_loss = val_loss
+                    torch.save(transformer.state_dict(), args.path)
+                    print('Model saved!')
+
+            print((f"Epoch: {epoch}, Train loss: {train_loss:.3f}, Val loss: {val_loss:.3f}, "
+                f"Epoch time = {(end_time - start_time):.3f}s"))
+
+        for encoded_seq, target in coldata:
+            print(encoded_seq.size())
+            print(len(target)) 
+        
     elif args.mode == 'infer':
         if args.device == 'cpu':
             transformer.load_state_dict(torch.load(args.path,  map_location=torch.device('cpu')))
@@ -209,7 +267,7 @@ if __name__ == '__main__':
             transformer.load_state_dict(torch.load(args.path))
         device = args.device
         transformer.to(device)
-       
+           
 
         transformer.eval()
         val_data, _ = torch.utils.data.random_split(test_data, [2, num_test-2])

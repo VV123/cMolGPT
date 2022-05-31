@@ -55,13 +55,16 @@ class Seq2SeqTransformer(nn.Module):
         self.tgt_tok_emb = TokenEmbedding(tgt_vocab_size, emb_size)
         #self.tgt_tok_emb = TokenEmbedding(tgt_vocab_size, emb_size)
         self.positional_encoding = PositionalEncoding(emb_size, dropout=dropout)
+        self.emb = nn.Embedding(4, dim_feedforward, padding_idx=0)
 
-    def forward(self, trg: Tensor, tgt_mask: Tensor, tgt_padding_mask: Tensor):
+    def forward(self, trg: Tensor, tgt_mask: Tensor, tgt_padding_mask: Tensor, target: Tensor):
         #src_emb = self.positional_encoding(self.src_tok_emb(src))
         tgt_emb = self.positional_encoding(self.tgt_tok_emb(trg))
         #memory = self.transformer_encoder(src_emb, src_mask, src_padding_mask)
         s, b = trg.size()
-        memory = torch.zeros(s, b, 512).to('cuda')
+        #memory = torch.zeros(s, b, 512).to('cuda')
+        #print(target.size())
+        memory = self.emb(target).unsqueeze(0).repeat(s, 1, 1)
         #print(memory.size())
         outs = self.transformer_decoder(tgt_emb, memory, tgt_mask, None,
                                         tgt_padding_mask)
