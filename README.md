@@ -7,5 +7,6 @@
 
 ## How to run
 ```
-  python3 main.py --batch_size 512 --mode [train, finetune, infer]
+  python3 main.py --batch_size 512 --mode [train, finetune, infer] \
+                  --path model_chem.h5 --loadmodel
 ```
