@@ -74,7 +74,9 @@ class Seq2SeqTransformer(nn.Module):
         return self.transformer_encoder(self.positional_encoding(
                             self.src_tok_emb(src)), src_mask)
 
-    def decode(self, tgt: Tensor, memory: Tensor, tgt_mask: Tensor):
+    def decode(self, tgt: Tensor, tgt_mask: Tensor, target: Tensor):
+        s, b = tgt.size()
+        memory = self.emb(target).unsqueeze(0).repeat(s, 1, 1)
         return self.transformer_decoder(self.positional_encoding(
                           self.tgt_tok_emb(tgt)), memory,
                           tgt_mask)

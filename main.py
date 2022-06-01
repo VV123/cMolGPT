@@ -33,7 +33,7 @@ from topk import topk_filter
 
 torch.manual_seed(0)
 
-def evaluate(model, val_iter):
+def evaluate(model, valid_iter):
     model.eval()
     losses = 0
     for idx, _tgt in (enumerate(valid_iter)):
@@ -42,8 +42,6 @@ def evaluate(model, val_iter):
             _tgt, _target = _tgt
             _target = torch.LongTensor(_target).to(device)
         tgt = _tgt.transpose(0, 1).to(device)
-        if tgt.size()[0] == 4098:
-            continue
         tgt_input = tgt[:-1, :]
 
         tgt_mask, tgt_padding_mask = create_mask(tgt_input)
@@ -70,8 +68,6 @@ def train_epoch(model, train_iter, optimizer):
             _target = torch.LongTensor(_target).to(device)
         #print(type(_tgt) is tuple)
         tgt = _tgt.transpose(0, 1).to(device)
-        if tgt.size()[0] == 4098:
-            continue 
         # remove encoder
         tgt_input = tgt[:-1, :]
 
@@ -91,27 +87,33 @@ def train_epoch(model, train_iter, optimizer):
         loss.backward()
 
         optimizer.step()
-        if idx % 50 == 0:
+        if idx % 100 == 0:
             print('Train Epoch: {}\t Loss: {:.6f}'.format(epoch, loss.item()))     
         losses += loss.item()
 
     print('====> Epoch: {0} total loss: {1:.4f}.'.format(epoch, losses))
     return losses / len(train_iter)
 
-
-def greedy_decode(model, max_len, start_symbol):
-
+def greedy_decode(model, max_len, start_symbol, target):
     #memory = torch.zeros(40, 512, 512).to('cuda')
     #memory = model.encode(src, src_mask)
     ys = torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(device)
     for i in range(max_len-1):
         #s, b = ys.size()
-        memory = torch.zeros(40, 1, 512).to('cuda')
-        memory = memory.to(device)
-        memory_mask = torch.zeros(ys.shape[0], memory.shape[0]).to(device).type(torch.bool)
+        # batch_size = 1
+        b = 1
+        s = max_len
+        FFD = 512
+        if target == 0:
+            _target = torch.zeros((b), dtype=torch.int32).to(device)
+        else:
+            _target = (torch.ones((b), dtype=torch.int32)*target).to(device)
+        #memory = torch.zeros(s, b, FFD).to('cuda')
+        #memory = memory.to(device)
+        #memory_mask = torch.zeros(ys.shape[0], memory.shape[0]).to(device).type(torch.bool)
         tgt_mask = (generate_square_subsequent_mask(ys.size(0))
                                     .type(torch.bool)).to(device)
-        out = model.decode(ys, memory, tgt_mask)
+        out = model.decode(ys, tgt_mask, _target)
         out = out.transpose(0, 1)
         prob = model.generator(out[:, -1]) #[b, vocab_size]
         pred_proba_t = topk_filter(prob, top_k=30) #[b, vocab_size]
@@ -119,7 +121,6 @@ def greedy_decode(model, max_len, start_symbol):
         next_word = torch.multinomial(probs, 1)
         #_, next_word = torch.max(prob, dim = 1)
         next_word = next_word.item()
-
         ys = torch.cat([ys,
                         torch.ones(1, 1).type_as(ys.data).fill_(next_word)], dim=0)
         if next_word == EOS_IDX:
@@ -137,6 +138,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('--layer', default=3, type=int)
     arg_parser.add_argument('--path', default='model_chem.h5', type=str)
     arg_parser.add_argument('--datamode', default=1, type=int)
+    arg_parser.add_argument('--target', default=1, type=int)
     arg_parser.add_argument('--d_model', default=512, type=int)
     arg_parser.add_argument('--nhead', default=8, type=int)
     arg_parser.add_argument('--embedding_size', default=200, type=int)
@@ -235,8 +237,8 @@ if __name__ == '__main__':
         num_test= len(finetune_dataset) -num_train
         train_data, val_data = torch.utils.data.random_split(finetune_dataset, [num_train, num_test])
 
-        train_iter = tud.DataLoader(train_data, args.batch_size, collate_fn=finetune_dataset.collate_fn,shuffle=True)
-        val_iter = tud.DataLoader(val_data, args.batch_size, collate_fn=finetune_dataset.collate_fn,shuffle=True)
+        train_iter = tud.DataLoader(train_data, args.batch_size, collate_fn=finetune_dataset.collate_fn, shuffle=True)
+        val_iter = tud.DataLoader(val_data, args.batch_size, collate_fn=finetune_dataset.collate_fn, shuffle=True)
         transformer = transformer.to(DEVICE)
         transformer.load_state_dict(torch.load(args.path))
 
@@ -247,7 +249,7 @@ if __name__ == '__main__':
             scheduler.step()
             end_time = time.time()
             if (epoch+1)%1==0:
-                val_loss = evaluate(transformer, valid_iter)
+                val_loss = evaluate(transformer, val_iter)
                 if val_loss < min_loss:
                     min_loss = val_loss
                     torch.save(transformer.state_dict(), args.path)
@@ -256,9 +258,6 @@ if __name__ == '__main__':
             print((f"Epoch: {epoch}, Train loss: {train_loss:.3f}, Val loss: {val_loss:.3f}, "
                 f"Epoch time = {(end_time - start_time):.3f}s"))
 
-        for encoded_seq, target in coldata:
-            print(encoded_seq.size())
-            print(len(target)) 
         
     elif args.mode == 'infer':
         if args.device == 'cpu':
@@ -267,16 +266,11 @@ if __name__ == '__main__':
             transformer.load_state_dict(torch.load(args.path))
         device = args.device
         transformer.to(device)
-           
-
         transformer.eval()
-        val_data, _ = torch.utils.data.random_split(test_data, [2, num_test-2])
-        val_dataloader = tud.DataLoader(val_data, batch_size=1, shuffle=True, collate_fn=dataset.collate_fn, drop_last=False)
-
-        for i, y_dat in enumerate(val_dataloader):
-            y = y_dat.to(device)
-            y = y.transpose(0, 1)
-            ybar = greedy_decode(transformer, max_len= 50, start_symbol=BOS_IDX).flatten()
+        _target = args.target
+        print('Target: {0}'.format(_target))
+        for i in range(3):
+            ybar = greedy_decode(transformer, max_len=100, start_symbol=BOS_IDX, target=_target).flatten()
             print(ybar)
             #ybar = vocabulary.decode_scaffold(ybar.to('cpu').data.numpy())
             ybar = mv.SMILESTokenizer().untokenize(vocabulary.decode(ybar.to('cpu').data.numpy()))
