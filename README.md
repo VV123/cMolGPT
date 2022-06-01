@@ -6,7 +6,13 @@
 
 
 ## How to run
+
+### Train
 ```
-  python3 main.py --batch_size 512 --mode [train, finetune, infer] \
+  python3 main.py --batch_size 512 --mode [train, finetune] \
                   --path model_chem.h5 --loadmodel
+```
+### Infer
+```
+  python3 main.py --mode infer --target 2
 ```
