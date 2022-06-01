@@ -271,9 +271,8 @@ if __name__ == '__main__':
         print('Target: {0}'.format(_target))
         for i in range(3):
             ybar = greedy_decode(transformer, max_len=100, start_symbol=BOS_IDX, target=_target).flatten()
-            print(ybar)
-            #ybar = vocabulary.decode_scaffold(ybar.to('cpu').data.numpy())
+            #print(ybar)
             ybar = mv.SMILESTokenizer().untokenize(vocabulary.decode(ybar.to('cpu').data.numpy()))
-            print('prediction')
+            #print('prediction')
             print(ybar)
        
