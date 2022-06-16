@@ -14,5 +14,5 @@
 ```
 ### Infer
 ```
-  python3 main.py --mode infer --target 2
+  python3 main.py --mode infer --target 2 --path model_finetune.h5
 ```
