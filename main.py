@@ -55,7 +55,7 @@ def evaluate(model, valid_iter):
         tgt_out = tgt[1:, :]
         loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
         losses += loss.item()
-    return losses / len(val_iter)
+    return losses / len(valid_iter)
 
 
 def train_epoch(model, train_iter, optimizer):
@@ -153,15 +153,17 @@ if __name__ == '__main__':
     #training_sets = load_sets('zinc/zinc.smi')
     #dataset = md.DecoratorDataset(training_sets, vocabulary=vocabulary)
 
-    mol_list0 = list(read_delimited_file('./chembl.filtered.smi'))
+    mol_list0_train = list(read_delimited_file('train.smi'))
+    mol_list0_test = list(read_delimited_file('test.smi'))
+    
     mol_list1, target_list = zip(*read_csv_file('Mol_target_dataloader/target.smi', num_fields=2))
-    mol_list = mol_list0 
+    mol_list = mol_list0_train
+    mol_list.extend(mol_list0_test) 
     mol_list.extend(mol_list1)
     vocabulary = mv.create_vocabulary(smiles_list=mol_list, tokenizer=mv.SMILESTokenizer())
     
-    
-    dataset = md.Dataset(mol_list0, vocabulary, mv.SMILESTokenizer())
-    #coldata = tud.DataLoader(dataset, 2, collate_fn=Dataset.collate_fn)
+    train_data = md.Dataset(mol_list0_train, vocabulary, mv.SMILESTokenizer())
+    test_data = md.Dataset(mol_list0_test, vocabulary, mv.SMILESTokenizer())
 
     BATCH_SIZE = args.batch_size
     SRC_VOCAB_SIZE = len(vocabulary)
@@ -189,12 +191,11 @@ if __name__ == '__main__':
             nn.init.xavier_uniform_(p)
 
     
-    num_train= int(len(dataset)*0.8)
-    num_test= len(dataset) -num_train
-    train_data, test_data = torch.utils.data.random_split(dataset, [num_train, num_test])
-    #coldata = tud.DataLoader(dataset, 2, collate_fn=Dataset.collate_fn)
-    train_iter = tud.DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True, collate_fn=dataset.collate_fn, drop_last=True)
-    test_iter = tud.DataLoader(test_data, batch_size=BATCH_SIZE, shuffle=True, collate_fn=dataset.collate_fn, drop_last=True)
+    #num_train= int(len(dataset)*0.8)
+    #num_test= len(dataset) -num_train
+    #train_data, test_data = torch.utils.data.random_split(dataset, [num_train, num_test])
+    train_iter = tud.DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True, collate_fn=train_data.collate_fn, drop_last=True)
+    test_iter = tud.DataLoader(test_data, batch_size=BATCH_SIZE, shuffle=True, collate_fn=test_data.collate_fn, drop_last=True)
     valid_iter = test_iter
 
     loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
@@ -216,6 +217,10 @@ if __name__ == '__main__':
             train_loss = train_epoch(transformer, train_iter, optimizer)
             scheduler.step()
             end_time = time.time()
+            if (epoch+1)%10==0:
+                torch.save(transformer.state_dict(), args.path+'_'+str(epoch+1))
+                print('Model saved every 10 epoches.') 
+            
             if (epoch+1)%1==0:
                 val_loss = evaluate(transformer, valid_iter)
                 if val_loss < min_loss:
