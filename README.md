@@ -1,4 +1,6 @@
-# SMILES_dataloader
+# De novo conditional molecular design
+
+Enforcing target embeddings as queries and keys.
 
 ## Data
 
