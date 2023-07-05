@@ -14,7 +14,7 @@ Enforcing target embeddings as queries and keys.
   python3 main.py --batch_size 512 --mode [train, finetune] \
                   --path model_chem.h5 --loadmodel
 ```
-### Infer
+### Infer/Generate
 ```
   python3 main.py --mode infer --target 2 --path model_finetune.h5
 ```
