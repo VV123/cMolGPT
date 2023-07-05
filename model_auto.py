@@ -55,7 +55,7 @@ class Seq2SeqTransformer(nn.Module):
         self.tgt_tok_emb = TokenEmbedding(tgt_vocab_size, emb_size)
         #self.tgt_tok_emb = TokenEmbedding(tgt_vocab_size, emb_size)
         self.positional_encoding = PositionalEncoding(emb_size, dropout=dropout)
-        self.emb = nn.Embedding(4, dim_feedforward, padding_idx=0)
+        self.emb = nn.Embedding(4, dim_feedforward, padding_idx=0) # number of targets + 1 (no target) = 4
 
     def forward(self, trg: Tensor, tgt_mask: Tensor, tgt_padding_mask: Tensor, target: Tensor):
         #src_emb = self.positional_encoding(self.src_tok_emb(src))
