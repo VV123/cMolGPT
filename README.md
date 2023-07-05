@@ -12,7 +12,7 @@ Enforcing target embeddings as queries and keys.
 ### Train
 ```
   python3 main.py --batch_size 512 --mode [train, finetune] \
-                  --path model_chem.h5 --loadmodel
+                  --path model_base.h5 --loadmodel
 ```
 *In the case of fine-tuning, the base model will be replaced in place.
 
