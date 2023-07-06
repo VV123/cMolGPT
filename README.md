@@ -6,6 +6,7 @@ Enforcing target embeddings as queries and keys.
 ## Data
 
 ### [Mol_target_dataloader](https://github.com/alfredyewang/Mol_target_dataloader)
+Please download this repo and put the folder in the root directory.
 
 ## How to run
 
