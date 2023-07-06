@@ -7,6 +7,7 @@ Enforcing target embeddings as queries and keys.
 
 ### [Mol_target_dataloader](https://github.com/alfredyewang/Mol_target_dataloader)
 Please download this repo and put the folder in the root directory.
+If you would like to finetune with your own target data, please replace 'target.smi'.
 
 ## How to run
 
