@@ -3,6 +3,10 @@
 Implementation of ["cMolGPT: A Conditional Generative Pre-Trained Transformer for Target-Specific De Novo Molecular Generation"](https://pubmed.ncbi.nlm.nih.gov/37298906/).
 Enforcing target embeddings as queries and keys.
 
+## Dependencies
+
+environment.yml
+
 ## Data
 
 ### [Mol_target_dataloader](https://github.com/alfredyewang/Mol_target_dataloader)
