@@ -5,7 +5,9 @@ Enforcing target embeddings as queries and keys.
 
 ## Dependencies
 
-environment.yml
+environment_v100.yml tested on NVIDIA V100
+
+environment_a6000.yml tested on RTX A6000
 
 ## Data
 
