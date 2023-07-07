@@ -11,7 +11,6 @@ from torch.nn import MSELoss, L1Loss
 from torch.nn.init import xavier_uniform_
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.preprocessing import MinMaxScaler
-from transformers import BertTokenizer, BertModel
 import numpy as np
 import sys
 from model_auto import Seq2SeqTransformer, PositionalEncoding, generate_square_subsequent_mask, create_mask
