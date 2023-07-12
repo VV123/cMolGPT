@@ -3,6 +3,8 @@
 Implementation of ["cMolGPT: A Conditional Generative Pre-Trained Transformer for Target-Specific De Novo Molecular Generation"](https://pubmed.ncbi.nlm.nih.gov/37298906/).
 Enforcing target embeddings as queries and keys.
 
+Please feel free to open an issue or email wenlu.wang.1@gmail.com and ye.wang@biogen.com if you have any questions. We will respond as soon as we can.
+
 ## Dependencies
 
 environment_v100.yml tested on NVIDIA V100
@@ -37,6 +39,4 @@ If you would like to finetune with your own target data, please replace 'target.
 ```
   python3 main.py --mode infer --target 2 --path model_finetune.h5
 ```
-### Contact
 
-Please feel free to open an issue or email wenlu.wang.1@gmail.com and ye.wang@biogen.com if you have any questions. We will respond as soon as we can.
