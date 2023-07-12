@@ -37,6 +37,16 @@ If you would like to finetune with your own target data, please replace 'target.
 
 ### Infer/Generate
 ```
+  python3 main.py --mode infer --target [0/1/2/3] --path model_finetune.h5
+```
+
+No target
+```
+  python3 main.py --mode infer --target 0 --path model_finetune.h5
+```
+
+Target 2
+```
   python3 main.py --mode infer --target 2 --path model_finetune.h5
 ```
 
