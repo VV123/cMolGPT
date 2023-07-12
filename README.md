@@ -11,6 +11,8 @@ environment_v100.yml tested on NVIDIA V100
 
 environment_a6000.yml tested on RTX A6000
 
+[Create env from yml file](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#creating-an-environment-from-an-environment-yml-file)
+
 ## Data
 
 ### [Mol_target_dataloader](https://github.com/alfredyewang/Mol_target_dataloader)
