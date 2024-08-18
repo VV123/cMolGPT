@@ -1,4 +1,6 @@
 # 💊 cMolGPT: A Conditional Generative Pre-Trained Transformer for Target-Specific De Novo Molecular Generation
+![Github repo stars](https://img.shields.io/github/stars/VV123/cMolGPT)
+![GitHub last commit](https://img.shields.io/github/last-commit/VV123/cMolGPT)
 
 📝 [Medium post](https://medium.com/@wenlu.wang.1/cmolgpt-a-conditional-generative-pre-trained-transformer-for-de-novo-molecular-design-92ad2532da50)
 
